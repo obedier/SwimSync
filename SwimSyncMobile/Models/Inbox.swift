@@ -18,8 +18,13 @@ struct TextDocument: Identifiable {
 /// queue; text is held here until the speech sheet has taken it.
 @MainActor
 final class Inbox: ObservableObject {
-    @Published var pendingText: TextDocument?
+    /// The document the speech sheet is showing. Setting it to nil (the
+    /// sheet dismissing) pulls the next one from `waiting`.
+    @Published var pendingText: TextDocument? {
+        didSet { if pendingText == nil, !waiting.isEmpty { pendingText = waiting.removeFirst() } }
+    }
     @Published var problem: String?
+    private var waiting: [TextDocument] = []
 
     static let textTypes: [UTType] = [
         .plainText, .text, .utf8PlainText, UTType("net.daringfireball.markdown")
@@ -39,7 +44,7 @@ final class Inbox: ObservableObject {
     func receive(_ url: URL, into library: MobileLibrary, videos: VideoExtractor) {
         if Self.isText(url) {
             do {
-                pendingText = try Self.readText(url)
+                enqueue(try Self.readText(url))
             } catch {
                 problem = "Couldn't read \(url.lastPathComponent) — \(error.localizedDescription)"
             }
@@ -48,6 +53,11 @@ final class Inbox: ObservableObject {
         } else {
             library.add([url])
         }
+    }
+
+    /// Shows the document now, or after the one already on screen.
+    func enqueue(_ document: TextDocument) {
+        if pendingText == nil { pendingText = document } else { waiting.append(document) }
     }
 
     static func readText(_ url: URL) throws -> TextDocument {

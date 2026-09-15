@@ -11,6 +11,7 @@ struct RootView: View {
     @EnvironmentObject var inbox: Inbox
     @EnvironmentObject var videos: VideoExtractor
 
+    @Environment(\.scenePhase) private var scenePhase
     @State private var tab = Tab.find
 
     enum Tab: Hashable { case find, music, transfer }
@@ -39,6 +40,13 @@ struct RootView: View {
             Button("OK") { inbox.problem = nil }
         } message: {
             Text(inbox.problem ?? "")
+        }
+        // The share extension can only leave things in the app-group inbox;
+        // this is where they are picked up.
+        .task { await SharedInbox.drain(into: inbox, library: library, videos: videos) }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            Task { await SharedInbox.drain(into: inbox, library: library, videos: videos) }
         }
         .task {
             // A finished download is only useful if it lands in the queue, so

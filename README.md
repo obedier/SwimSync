@@ -241,8 +241,30 @@ spoken MP3 with the system voices and queues it.
 - Output is 64 kbps mono, about 28 MB an hour, under `Documents/Speech` and
   visible in the Files app.
 
-Sharing an audio file to SwimSync from another app adds it straight to the
-queue, as before.
+### Sharing to SwimSync
+
+SwimSync is a row in the share sheet (`SwimSyncShare`, a share extension).
+It accepts text (a note, a selection), a web page, and audio or video files,
+writes them into the app-group inbox, and the app picks them up the next
+time it is opened:
+
+- **Text** opens the read-aloud sheet.
+- **A page shared from Safari** arrives with its readable text already
+  extracted by the extension's JavaScript, so it reads aloud without a
+  second fetch. From other browsers only the link arrives; the app fetches
+  the page and strips the markup itself. YouTube links are refused with an
+  explanation, since the app doesn't download videos.
+- **Audio** goes straight to the queue; **video** has its audio extracted.
+
+Sharing works only because both targets share
+`group.com.osamabedier.swimsync`. That App Group has to exist in the
+developer account before the app will sign — a one-time step. Either open
+the project in Xcode with your Apple ID added under Settings → Accounts
+and let automatic signing register it, or create it at
+developer.apple.com under Identifiers → App Groups and enable App Groups
+on both bundle IDs. The App Store Connect API cannot create app groups, and
+Xcode's signing service does not accept the API key, so this cannot be
+scripted from here.
 
 ### Sending again, and erasing
 
