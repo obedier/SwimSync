@@ -1,0 +1,7 @@
+.context/
+build/
+*.xcodeproj/
+build-ios/
+build-ios-device/
+build-archive/
+.DS_Store

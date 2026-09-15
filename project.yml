@@ -1,0 +1,123 @@
+name: SwimSync
+options:
+  bundleIdPrefix: com.osamabedier
+  deploymentTarget:
+    macOS: "14.0"
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "2"
+    DEAD_CODE_STRIPPING: YES
+
+targets:
+  SwimSync:
+    type: application
+    platform: macOS
+    sources:
+      - path: SwimSync
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.osamabedier.SwimSync
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_APP_SANDBOX: NO
+        COMBINE_HIDPI_IMAGES: YES
+        INFOPLIST_KEY_NSHumanReadableCopyright: ""
+        # Signed with a real Developer ID rather than ad-hoc. This is not about
+        # distribution — it is what makes macOS remember the removable-volume
+        # permission. An ad-hoc signature's designated requirement is a bare
+        # `cdhash`, which changes on every rebuild, so TCC sees each build as a
+        # brand-new app and re-prompts. A Developer ID pins the requirement to
+        # the team, which is stable across rebuilds.
+        DEVELOPMENT_TEAM: U3972W2GDJ
+        CODE_SIGN_IDENTITY: "Developer ID Application"
+        CODE_SIGN_STYLE: Manual
+        ENABLE_HARDENED_RUNTIME: NO
+        # Local build, never notarized — skip the timestamp server round-trip.
+        OTHER_CODE_SIGN_FLAGS: "--timestamp=none"
+    info:
+      path: SwimSync/Info.plist
+      properties:
+        CFBundleName: SwimSync
+        CFBundleDisplayName: SwimSync
+        CFBundleIconName: AppIcon
+        CFBundleShortVersionString: "1.0"
+        CFBundlePackageType: APPL
+        LSMinimumSystemVersion: "14.0"
+        LSApplicationCategoryType: public.app-category.utilities
+        NSHighResolutionCapable: true
+        # Single-window utility; no Dock-less background mode.
+        LSUIElement: false
+        # Shown in the macOS permission prompt. Without it the alert falls back
+        # to generic wording that doesn't say why the app wants the volume.
+        NSRemovableVolumesUsageDescription: >-
+          SwimSync needs access to your MP3 player so it can copy episodes onto
+          it and tidy up the macOS metadata files that confuse the player.
+
+  SwimSyncMobile:
+    type: application
+    platform: iOS
+    sources:
+      - path: SwimSyncMobile
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.osamabedier.SwimSyncMobile
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1,2"
+        # Device installs need a provisioning profile, so this target uses
+        # automatic signing. Change the team in Xcode's Signing & Capabilities
+        # if this one is not the right one for your device.
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: U3972W2GDJ
+        CODE_SIGN_IDENTITY: "Apple Development"
+    info:
+      path: SwimSyncMobile/Info.plist
+      properties:
+        CFBundleName: SwimSync
+        CFBundleDisplayName: SwimSync
+        CFBundleIconName: AppIcon
+        CFBundleShortVersionString: "1.0"
+        CFBundlePackageType: APPL
+        UILaunchScreen: {}
+        UIUserInterfaceStyle: Dark
+        # Plain https only — no custom crypto — so App Store Connect can skip
+        # the export-compliance question on every TestFlight build.
+        ITSAppUsesNonExemptEncryption: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        # Lets episodes be handed to SwimSync from another app's share sheet.
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Audio
+            LSHandlerRank: Alternate
+            LSItemContentTypes:
+              - public.audio
+              - public.mp3
+        # Files created here should be visible in the Files app.
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+        # Deliberate ATS relaxation, against the usual house rule.
+        #
+        # A podcast client fetches feeds and enclosures from thousands of hosts
+        # it has never seen, and a large minority still serve plain http — old
+        # feeds, self-hosted shows, and redirect chains that drop to http
+        # mid-flight. There is no domain list to enumerate, so an exception
+        # list cannot express this.
+        #
+        # The mitigation is in code rather than config: FeedParser.fetch and
+        # EpisodeDownloader both try an https upgrade FIRST and only fall back
+        # to http when that fails, so the common case stays encrypted. This
+        # only widens what is *possible*, not what is preferred.
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
