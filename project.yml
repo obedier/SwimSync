@@ -94,6 +94,14 @@ targets:
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: U3972W2GDJ
         CODE_SIGN_IDENTITY: "Apple Development"
+      configs:
+        # Debug signs with development profiles created through the App
+        # Store Connect API (scripts/dev-profiles.sh): the App Group
+        # entitlement needs explicit profiles, and Xcode's automatic signing
+        # cannot create them here without an Apple ID in Xcode.
+        Debug:
+          CODE_SIGN_STYLE: Manual
+          PROVISIONING_PROFILE_SPECIFIER: SwimSync Mobile Development
     info:
       path: SwimSyncMobile/Info.plist
       properties:
@@ -171,7 +179,7 @@ targets:
       - path: SwimSyncShare/SwimSyncShare.js
         buildPhase: resources
       - path: Shared/AppGroup.swift
-      - path: Shared/FileNaming.swift
+      - path: Shared/FileSanitizer.swift
     entitlements:
       path: SwimSyncShare/SwimSyncShare.entitlements
       properties:
@@ -184,6 +192,10 @@ targets:
         DEVELOPMENT_TEAM: U3972W2GDJ
         CODE_SIGN_IDENTITY: "Apple Development"
         SKIP_INSTALL: YES
+      configs:
+        Debug:
+          CODE_SIGN_STYLE: Manual
+          PROVISIONING_PROFILE_SPECIFIER: SwimSync Share Development
     info:
       path: SwimSyncShare/Info.plist
       properties:

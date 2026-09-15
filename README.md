@@ -256,15 +256,20 @@ time it is opened:
   explanation, since the app doesn't download videos.
 - **Audio** goes straight to the queue; **video** has its audio extracted.
 
-Sharing works only because both targets share
-`group.com.osamabedier.swimsync`. That App Group has to exist in the
-developer account before the app will sign — a one-time step. Either open
-the project in Xcode with your Apple ID added under Settings → Accounts
-and let automatic signing register it, or create it at
-developer.apple.com under Identifiers → App Groups and enable App Groups
-on both bundle IDs. The App Store Connect API cannot create app groups, and
-Xcode's signing service does not accept the API key, so this cannot be
-scripted from here.
+Sharing works because both targets share `group.com.osamabedier.swimsync`.
+The App Group, the extension's bundle ID, and the App Groups capability on
+both IDs are registered in the developer account. Debug builds sign with
+two development profiles that carry the group entitlement; they were made
+through the App Store Connect API because Xcode's automatic signing needs
+an Apple ID in Xcode to create them. On a new Mac, or after adding a device
+or certificate:
+
+```sh
+scripts/dev-profiles.sh
+```
+
+downloads (or recreates) both profiles into Xcode's profile folder. Release
+builds keep automatic signing for TestFlight.
 
 ### Sending again, and erasing
 

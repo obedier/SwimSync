@@ -3,11 +3,7 @@ import Foundation
 /// The player displays raw filenames, so what we name a file on the device is
 /// the entire user-facing experience there. Podcast downloads arrive as UUIDs
 /// (`0FA2D107-C94C-….mp3`), which would be useless on a 1-line display.
-enum FileNaming {
-    /// FAT32 long names reject these outright; a few others confuse cheap
-    /// firmware parsers, so they go too.
-    private static let illegal = CharacterSet(charactersIn: #"\/:*?"<>|"# + "\u{0}")
-
+extension FileNaming {
     private static let uuidPattern = try? NSRegularExpression(
         pattern: "^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$",
         options: .caseInsensitive
@@ -19,19 +15,6 @@ enum FileNaming {
         guard let uuidPattern else { return false }
         let range = NSRange(stem.startIndex..., in: stem)
         return uuidPattern.firstMatch(in: stem, range: range) != nil
-    }
-
-    /// Strip characters FAT32 can't store and collapse the result.
-    static func sanitize(_ raw: String) -> String {
-        let cleaned = raw
-            .components(separatedBy: illegal)
-            .joined(separator: "-")
-            .replacingOccurrences(of: "\u{2019}", with: "'")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        let collapsed = cleaned.replacingOccurrences(
-            of: " {2,}", with: " ", options: .regularExpression
-        )
-        return collapsed.isEmpty ? "Track" : collapsed
     }
 
     /// Final on-device filename for a track.
