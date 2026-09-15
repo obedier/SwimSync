@@ -1,7 +1,18 @@
 # SwimSync
 
-A macOS app for loading podcasts and MP3s onto a USB mass-storage MP3 player —
-built for a PSIER bone-conduction headset that mounts as `/Volumes/SWIM`.
+macOS and iOS apps for loading podcasts and MP3s onto a USB mass-storage MP3
+player — built for a PSIER bone-conduction headset that mounts as
+`/Volumes/SWIM` on a Mac and appears in the Files app on an iPhone.
+
+| | macOS `SwimSync` | iOS `SwimSyncMobile` |
+|---|---|---|
+| Source of audio | Apple Podcasts and Music.app folders, drag and drop | Built-in podcast client (search, top chart, favourites), Files app, share sheet |
+| Finds the player | Automatically on mount, can auto-launch | Pick the drive once in Files; reconnects on later launches |
+| Copy engine, naming, duplicate detection | Shared `Shared/` core | Shared `Shared/` core |
+| Extras | Spotlight suppression, xattr and sidecar cleanup, eject | Send again, replace on player, erase player, TestFlight script |
+
+The macOS app is documented first; the iPhone app is in
+[The iPhone app](#the-iphone-app) below.
 
 ## Why it exists
 
