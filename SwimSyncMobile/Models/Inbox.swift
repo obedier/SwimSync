@@ -34,14 +34,17 @@ final class Inbox: ObservableObject {
     }
 
     /// Routes one incoming URL. Text is read now and queued for the speech
-    /// sheet; anything else is assumed to be audio and handed to the queue.
-    func receive(_ url: URL, into library: MobileLibrary) {
+    /// sheet, a video goes to the extractor, and anything else is assumed
+    /// to be audio and handed to the queue.
+    func receive(_ url: URL, into library: MobileLibrary, videos: VideoExtractor) {
         if Self.isText(url) {
             do {
                 pendingText = try Self.readText(url)
             } catch {
                 problem = "Couldn't read \(url.lastPathComponent) — \(error.localizedDescription)"
             }
+        } else if VideoExtractor.isVideo(url) {
+            videos.extract(url)
         } else {
             library.add([url])
         }

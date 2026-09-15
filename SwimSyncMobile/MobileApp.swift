@@ -13,6 +13,7 @@ struct SwimSyncMobileApp: App {
     @StateObject private var music = MusicLibrarySource()
     @StateObject private var speech = SpeechMaker()
     @StateObject private var inbox = Inbox()
+    @StateObject private var videos = VideoExtractor()
 
     var body: some Scene {
         WindowGroup {
@@ -25,10 +26,11 @@ struct SwimSyncMobileApp: App {
                 .environmentObject(music)
                 .environmentObject(speech)
                 .environmentObject(inbox)
+                .environmentObject(videos)
                 .preferredColorScheme(.dark)
                 .tint(Theme.accent)
                 // "Open in SwimSync" from the share sheet or Files lands here.
-                .onOpenURL { url in inbox.receive(url, into: library) }
+                .onOpenURL { url in inbox.receive(url, into: library, videos: videos) }
         }
     }
 }

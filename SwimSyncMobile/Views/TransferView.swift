@@ -6,9 +6,11 @@ struct TransferView: View {
     @EnvironmentObject var library: MobileLibrary
     @EnvironmentObject var transfer: TransferEngine
     @EnvironmentObject var inbox: Inbox
+    @EnvironmentObject var videos: VideoExtractor
 
     @Environment(\.scenePhase) private var scenePhase
     @State private var picking = false
+    @State private var pickingPhotos = false
     @State private var pickerMode: PickerMode = .drive
     @State private var numberTracks = true
     @State private var useMetadataNames = true
@@ -45,6 +47,8 @@ struct TransferView: View {
                 VStack(spacing: 14) {
                     PlayerCard(onChoose: { present(.drive) }, onErase: { confirmingErase = true })
 
+                    ConvertingCard()
+
                     QueueCard(
                         sendable: Set(sendable.map(\.id)),
                         forced: forced,
@@ -67,7 +71,8 @@ struct TransferView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Button("Add Files…") { present(.files) }
+                        Button("Add Audio or Video Files…") { present(.files) }
+                        Button("Add Video from Photos…") { pickingPhotos = true }
                         Button("Read a Text File Aloud…") { present(.text) }
                         Button(drive.isConnected ? "Change Player Folder…" : "Choose Player Folder…") {
                             present(.drive)
@@ -111,10 +116,17 @@ struct TransferView: View {
         ) { result in
             handlePick(result)
         }
+        .background(
+            PhotosVideoPicker(
+                isPresented: $pickingPhotos,
+                onPicked: { urls in urls.forEach { videos.extract($0) } },
+                onProblem: { videos.problem = $0 }
+            )
+        )
         .alert("Something went wrong", isPresented: problemBinding) {
-            Button("OK") { drive.problem = nil; library.problem = nil }
+            Button("OK") { drive.problem = nil; library.problem = nil; videos.problem = nil }
         } message: {
-            Text(drive.problem ?? library.problem ?? "")
+            Text(drive.problem ?? library.problem ?? videos.problem ?? "")
         }
         .confirmationDialog(
             "Erase \(drive.contents.count) track\(drive.contents.count == 1 ? "" : "s") from the player?",
@@ -136,7 +148,7 @@ struct TransferView: View {
         var contentTypes: [UTType] {
             switch self {
             case .drive: return [.folder]
-            case .files: return [.audio, .mp3, .mpeg4Audio, .wav, .aiff]
+            case .files: return [.audio, .mp3, .mpeg4Audio, .wav, .aiff] + VideoExtractor.videoTypes
             case .text: return Inbox.textTypes
             }
         }
@@ -161,17 +173,19 @@ struct TransferView: View {
                 drive.choose(urls[0])
             } else if pickerMode == .text {
                 // One at a time: each becomes its own recording.
-                inbox.receive(urls[0], into: library)
+                inbox.receive(urls[0], into: library, videos: videos)
             } else {
-                library.add(urls)
+                // Audio straight to the queue; a video goes through the
+                // extractor first and arrives in the queue as an MP3.
+                for url in urls { inbox.receive(url, into: library, videos: videos) }
             }
         }
     }
 
     private var problemBinding: Binding<Bool> {
         Binding(
-            get: { drive.problem != nil || library.problem != nil },
-            set: { if !$0 { drive.problem = nil; library.problem = nil } }
+            get: { drive.problem != nil || library.problem != nil || videos.problem != nil },
+            set: { if !$0 { drive.problem = nil; library.problem = nil; videos.problem = nil } }
         )
     }
 

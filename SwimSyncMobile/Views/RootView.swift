@@ -9,6 +9,7 @@ struct RootView: View {
     @EnvironmentObject var podcasts: PodcastLibrary
     @EnvironmentObject var music: MusicLibrarySource
     @EnvironmentObject var inbox: Inbox
+    @EnvironmentObject var videos: VideoExtractor
 
     @State private var tab = Tab.find
 
@@ -50,6 +51,9 @@ struct RootView: View {
                 if let show { podcasts.recordDownload(episode, from: show) }
             }
             music.onExported = { _, url in
+                library.add([url])
+            }
+            videos.onExtracted = { url in
                 library.add([url])
             }
         }

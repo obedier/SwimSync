@@ -6,7 +6,7 @@ player — built for a PSIER bone-conduction headset that mounts as
 
 | | macOS `SwimSync` | iOS `SwimSyncMobile` |
 |---|---|---|
-| Source of audio | Apple Podcasts and Music.app folders, drag and drop | Built-in podcast client (search, top chart, favourites), the phone's Music library, text files read aloud, Files app, share sheet |
+| Source of audio | Apple Podcasts and Music.app folders, drag and drop | Built-in podcast client (search, top chart, favourites), the phone's Music library, audio pulled from videos, text files read aloud, Files app, share sheet |
 | Finds the player | Automatically on mount, can auto-launch | Pick the drive once in Files; reconnects on later launches |
 | Copy engine, naming, duplicate detection | Shared `Shared/` core | Shared `Shared/` core |
 | Extras | Spotlight suppression, xattr and sidecar cleanup, eject | Send again, replace on player, erase player, TestFlight script |
@@ -212,6 +212,20 @@ the ones it can into MP3s under `Documents/Music`, then queues them.
   then fails on the first read and says so, rather than producing silence.
 
 The first visit asks for Media & Apple Music access. Nothing leaves the phone.
+
+### Audio from a video
+
+A video handed to SwimSync — from the Files picker, the Photos library
+(*Add Video from Photos…*), or the share sheet — has its soundtrack pulled
+out into an MP3 under `Documents/Videos` and queued. The video track is
+never read, so a two-hour file takes about as long as decoding its audio.
+
+- **Works** with anything iOS itself can open: MP4, M4V, MOV. That covers
+  what most YouTube download apps and Safari produce.
+- **Doesn't** with WebM, MKV, FLV or Opus audio, which AVFoundation has no
+  decoder for. The app says so and suggests downloading as MP4.
+- YouTube's own app keeps its offline videos encrypted in its container, so
+  those can't be used. Save the video with a downloader app or the browser.
 
 ### Reading a text file aloud
 

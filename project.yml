@@ -129,6 +129,12 @@ targets:
               - public.plain-text
               - public.text
               - net.daringfireball.markdown
+          - CFBundleTypeName: Video
+            LSHandlerRank: Alternate
+            LSItemContentTypes:
+              - public.movie
+              - public.mpeg-4
+              - com.apple.quicktime-movie
         # Files created here should be visible in the Files app.
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
