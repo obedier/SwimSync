@@ -169,7 +169,7 @@ struct EpisodeRow: View {
 
 /// Determinate ring with a stop glyph inside it. A bare ring reads as "busy";
 /// the glyph is what tells the user the whole thing is a cancel button.
-private struct DownloadRing: View {
+struct DownloadRing: View {
     let progress: Double
 
     /// A hairline of arc at 0% so the control never looks like an empty circle

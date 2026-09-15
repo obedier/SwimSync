@@ -6,7 +6,7 @@ player — built for a PSIER bone-conduction headset that mounts as
 
 | | macOS `SwimSync` | iOS `SwimSyncMobile` |
 |---|---|---|
-| Source of audio | Apple Podcasts and Music.app folders, drag and drop | Built-in podcast client (search, top chart, favourites), Files app, share sheet |
+| Source of audio | Apple Podcasts and Music.app folders, drag and drop | Built-in podcast client (search, top chart, favourites), the phone's Music library, text files read aloud, Files app, share sheet |
 | Finds the player | Automatically on mount, can auto-launch | Pick the drive once in Files; reconnects on later launches |
 | Copy engine, naming, duplicate detection | Shared `Shared/` core | Shared `Shared/` core |
 | Extras | Spotlight suppression, xattr and sidecar cleanup, eject | Send again, replace on player, erase player, TestFlight script |
@@ -195,6 +195,41 @@ and the show's own RSS feed — no key, no server, nothing to sign up for.
   before" even after the file is gone from the phone. All of it lives in
   one JSON file in the app's Documents folder.
 
+### Songs from the Music library
+
+The Music tab lists every song in the phone's Music library and converts
+the ones it can into MP3s under `Documents/Music`, then queues them.
+
+- **What works**: songs synced from a Mac, bought from the iTunes Store, or
+  matched through iTunes Match. MP3 sources are copied frame-for-frame with
+  no re-encoding. AAC and everything else is decoded and encoded to MP3 with
+  LAME at 192 kbps, since the player decodes nothing but MP3 and WAV.
+- **What can't**: Apple Music subscription tracks. They are FairPlay
+  encrypted and iOS gives no app a readable copy. They are listed, badged
+  *Apple Music*, and locked. Cloud tracks that were never downloaded to the
+  phone are badged *not downloaded*; download them in Music first.
+- iOS sometimes reports an Apple Music track as unprotected. The conversion
+  then fails on the first read and says so, rather than producing silence.
+
+The first visit asks for Media & Apple Music access. Nothing leaves the phone.
+
+### Reading a text file aloud
+
+*Read a Text File Aloud…* in the Transfer tab's menu, or sharing a `.txt` or
+`.md` file to SwimSync from any app, opens a sheet that turns the text into a
+spoken MP3 with the system voices and queues it.
+
+- The voice runs on the phone. Premium and Enhanced voices, downloaded in
+  Settings → Accessibility → Spoken Content → Voices, sound like an
+  audiobook; the standard ones sound like a screen reader.
+- Text is spoken a paragraph at a time and encoded as it goes, so an hour of
+  narration never sits in memory and the progress bar is honest.
+- Output is 64 kbps mono, about 28 MB an hour, under `Documents/Speech` and
+  visible in the Files app.
+
+Sharing an audio file to SwimSync from another app adds it straight to the
+queue, as before.
+
 ### Sending again, and erasing
 
 - **Send again** — after a transfer, every row in the Done panel has a
@@ -210,6 +245,19 @@ and the show's own RSS feed — no key, no server, nothing to sign up for.
   folder, after a confirmation that states the count. Only top-level audio
   files; folders and anything the player's firmware relies on are left alone.
   Refused when the chosen folder is on the phone rather than the drive.
+
+### Keeping a transfer alive
+
+A long copy on the phone dies for two reasons that never trouble the Mac:
+the screen locks and iOS suspends the app mid-file, or the cable comes out.
+So while a transfer runs the screen is kept awake and the system is asked
+for its background grace period (about thirty seconds, enough to answer a
+message and come back). Each file is written in 1 MiB chunks, retried once
+after a transient write error, and an unplugged drive stops the batch with
+*player disconnected* instead of failing every remaining file slowly.
+
+The measured ceiling is still the player's USB full-speed link, around
+1 MB/s; a faster phone or cable changes nothing.
 
 ### TestFlight
 

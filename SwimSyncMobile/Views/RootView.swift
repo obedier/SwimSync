@@ -7,10 +7,12 @@ struct RootView: View {
     @EnvironmentObject var library: MobileLibrary
     @EnvironmentObject var downloader: EpisodeDownloader
     @EnvironmentObject var podcasts: PodcastLibrary
+    @EnvironmentObject var music: MusicLibrarySource
+    @EnvironmentObject var inbox: Inbox
 
     @State private var tab = Tab.find
 
-    enum Tab: Hashable { case find, transfer }
+    enum Tab: Hashable { case find, music, transfer }
 
     var body: some View {
         TabView(selection: $tab) {
@@ -18,12 +20,25 @@ struct RootView: View {
                 .tabItem { Label("Find", systemImage: "magnifyingglass") }
                 .tag(Tab.find)
 
+            MusicView()
+                .tabItem { Label("Music", systemImage: "music.note") }
+                .tag(Tab.music)
+
             TransferView()
                 .tabItem { Label("Transfer", systemImage: "arrow.up.circle") }
                 .tag(Tab.transfer)
                 .badge(library.queue.count)
         }
         .tint(Theme.library)
+        // A text file handed to the app from anywhere opens the speech sheet.
+        .sheet(item: $inbox.pendingText) { document in
+            SpeechView(document: document)
+        }
+        .alert("Something went wrong", isPresented: inboxProblem) {
+            Button("OK") { inbox.problem = nil }
+        } message: {
+            Text(inbox.problem ?? "")
+        }
         .task {
             // A finished download is only useful if it lands in the queue, so
             // the two are joined here rather than making the user re-add the
@@ -34,6 +49,13 @@ struct RootView: View {
                 library.add([url])
                 if let show { podcasts.recordDownload(episode, from: show) }
             }
+            music.onExported = { _, url in
+                library.add([url])
+            }
         }
+    }
+
+    private var inboxProblem: Binding<Bool> {
+        Binding(get: { inbox.problem != nil }, set: { if !$0 { inbox.problem = nil } })
     }
 }

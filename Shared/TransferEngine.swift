@@ -88,7 +88,14 @@ final class TransferEngine: ObservableObject {
     private var cancelled = false
     /// Mirrors `cancelled` somewhere the background copy can read it.
     private var cancelFlag = CancelFlag()
-    private let chunkSize = 262_144   // 256 KB ≈ 4 progress ticks/sec at 1 MB/s
+    /// 1 MiB. Apple's own copy engine sizes chunks from the volume's
+    /// `f_iosize`; on iOS every write to an external drive also crosses into
+    /// the user-space FAT driver, so fewer, larger writes cost less. Progress
+    /// is sampled on a timer, not per chunk, so the bar stays smooth.
+    private let chunkSize = 1_048_576
+    /// One quiet retry per file. A single bad write on a cheap flash stick is
+    /// common and usually transient; a second failure is reported.
+    private let attemptsPerFile = 2
 
     init(hygiene: TransferHygiene = NoHygiene()) {
         self.hygiene = hygiene
@@ -196,20 +203,34 @@ final class TransferEngine: ObservableObject {
 
             items[index].state = .copying
 
-            do {
-                try await copy(from: item.track.url, to: dest, itemIndex: index, startedAt: started)
+            let attempt = await attemptCopy(item: item, to: dest, index: index, startedAt: started)
+            switch attempt {
+            case .copied:
                 hygiene.afterFile(dest)
                 items[index].state = .done
                 copied += 1
-            } catch is CancellationError {
+            case .cancelled:
                 try? FileManager.default.removeItem(at: dest)
                 items[index].state = .skipped("cancelled")
                 skipped += 1
-                break
-            } catch {
+            case .failed(let why):
                 try? FileManager.default.removeItem(at: dest)
-                items[index].state = .failed(error.localizedDescription)
+                items[index].state = .failed(why)
                 failed += 1
+            }
+            if case .cancelled = attempt { break }
+
+            // The cable came out: every remaining file would fail the same
+            // way, slowly. Say so once and stop.
+            if !Self.isReachable(destination) {
+                for rest in indices where rest > index && items[rest].state == .waiting {
+                    items[rest].state = .skipped("player disconnected")
+                    skipped += 1
+                }
+                if case .failed = items[index].state {
+                    items[index].state = .failed("player disconnected")
+                }
+                break
             }
         }
 
@@ -235,6 +256,41 @@ final class TransferEngine: ObservableObject {
         if copied > 0 { parts.append("→ \(destination.lastPathComponent)") }
 
         finishedSummary = (cancelled ? "Cancelled — " : "") + parts.joined(separator: " · ")
+    }
+
+    private enum Attempt {
+        case copied, cancelled, failed(String)
+    }
+
+    /// One file, with a retry. Cancellation is never retried; a failure is
+    /// retried once after a short pause unless the volume itself is gone.
+    private func attemptCopy(item: TransferItem, to dest: URL, index: Int, startedAt: Date) async -> Attempt {
+        var lastFailure = "unknown error"
+        let doneBefore = bytesDone
+        for attempt in 1...attemptsPerFile {
+            do {
+                try await copy(from: item.track.url, to: dest, itemIndex: index, startedAt: startedAt)
+                return .copied
+            } catch is CancellationError {
+                return .cancelled
+            } catch {
+                lastFailure = error.localizedDescription
+                try? FileManager.default.removeItem(at: dest)
+                guard attempt < attemptsPerFile, Self.isReachable(dest.deletingLastPathComponent()) else { break }
+                // Wind the totals back so the bar doesn't jump past 100%.
+                items[index].bytesWritten = 0
+                bytesDone = doneBefore
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                if cancelled { return .cancelled }
+            }
+        }
+        return .failed(lastFailure)
+    }
+
+    /// Whether the destination folder still exists. On iOS an unplugged
+    /// drive's mount point simply vanishes; nothing announces it.
+    private nonisolated static func isReachable(_ folder: URL) -> Bool {
+        (try? folder.checkResourceIsReachable()) ?? false
     }
 
     /// Runs one file's copy on a background thread and samples its progress.
@@ -263,8 +319,11 @@ final class TransferEngine: ObservableObject {
         // Sample the counter instead of having the copy push every chunk at us;
         // the UI only needs a few updates a second.
         let poller = Task { @MainActor [weak self] in
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 120_000_000)
+            while true {
+                // A cancelled sleep must exit here, not fall through to one
+                // last write: the retry path resets the totals right after
+                // this task is cancelled and a stale tick would undo that.
+                do { try await Task.sleep(nanoseconds: 120_000_000) } catch { return }
                 guard let self, self.items.indices.contains(itemIndex) else { return }
                 let n = box.bytes
                 self.items[itemIndex].bytesWritten = n
@@ -273,9 +332,16 @@ final class TransferEngine: ObservableObject {
                 if elapsed > 0.5 { self.observedRate = Double(self.bytesDone) / elapsed }
             }
         }
-        defer { poller.cancel() }
 
-        try await work.value
+        do {
+            try await work.value
+        } catch {
+            poller.cancel()
+            await poller.value
+            throw error
+        }
+        poller.cancel()
+        await poller.value
 
         // Land on the exact totals; the last poll almost never coincides with
         // the final chunk.

@@ -5,6 +5,7 @@ struct TransferView: View {
     @EnvironmentObject var drive: DriveStore
     @EnvironmentObject var library: MobileLibrary
     @EnvironmentObject var transfer: TransferEngine
+    @EnvironmentObject var inbox: Inbox
 
     @Environment(\.scenePhase) private var scenePhase
     @State private var picking = false
@@ -67,6 +68,7 @@ struct TransferView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button("Add Files…") { present(.files) }
+                        Button("Read a Text File Aloud…") { present(.text) }
                         Button(drive.isConnected ? "Change Player Folder…" : "Choose Player Folder…") {
                             present(.drive)
                         }
@@ -129,12 +131,13 @@ struct TransferView: View {
     }
 
     enum PickerMode {
-        case drive, files
+        case drive, files, text
 
         var contentTypes: [UTType] {
             switch self {
             case .drive: return [.folder]
             case .files: return [.audio, .mp3, .mpeg4Audio, .wav, .aiff]
+            case .text: return Inbox.textTypes
             }
         }
     }
@@ -156,6 +159,9 @@ struct TransferView: View {
             // is the player no matter which button opened the picker.
             if urls.count == 1, urls[0].hasDirectoryPath {
                 drive.choose(urls[0])
+            } else if pickerMode == .text {
+                // One at a time: each becomes its own recording.
+                inbox.receive(urls[0], into: library)
             } else {
                 library.add(urls)
             }
